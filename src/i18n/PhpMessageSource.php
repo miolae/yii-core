@@ -76,7 +76,7 @@ class PhpMessageSource extends MessageSource
      * @see loadFallbackMessages
      * @see sourceLanguage
      */
-    public function loadMessages($category, $language)
+    public function loadMessages($category, $language): array
     {
         $messageFile = $this->getMessageFilePath($category, $language);
         $messages = $this->loadMessagesFromFile($messageFile);

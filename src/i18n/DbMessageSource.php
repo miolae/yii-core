@@ -106,7 +106,7 @@ class DbMessageSource extends MessageSource
      * @throws \Psr\SimpleCache\InvalidArgumentException
      * @throws \yii\db\Exception
      */
-    public function loadMessages($category, $language)
+    public function loadMessages($category, $language): array
     {
         if ($this->enableCaching) {
             $key = [
