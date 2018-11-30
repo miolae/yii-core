@@ -69,4 +69,30 @@ abstract class MessageSourceTest extends \PHPUnit\Framework\TestCase
 
         self::assertSame($translation, $actualMessage);
     }
+
+    public function testLoadMessages()
+    {
+        $language = 'en_US';
+        $targetLanguage = 'de_DE';
+        $fallbackLanguage = 'de';
+        $category = 'test';
+        $messages = [
+            'This message will be translated.',
+            'The second message to be translated.',
+        ];
+
+        $translation = [
+            'This message is translated.',
+            'The second translated message',
+        ];
+        $translations = new TranslationsCollection();
+        $translations->addTranslation(new Translation($fallbackLanguage, 'test', $messages[0], $translation[0]));
+        $translations->addTranslation(new Translation($fallbackLanguage, 'test', $messages[1], $translation[1]));
+        $this->prepareTranslations($translations);
+
+        $messageSource = $this->getMessageSource($language, true);
+        $messagesTranslated = $messageSource->loadMessages($category, $targetLanguage);
+
+        self::assertSame($translation, $messagesTranslated);
+    }
 }
