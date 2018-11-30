@@ -7,8 +7,11 @@
 
 namespace yii\validators;
 
-use yii\helpers\Yii;
+use yii\exceptions\InvalidConfigException;
 use yii\helpers\StringHelper;
+use yii\helpers\Yii;
+use yii\validators\rules\BaseRule;
+use yii\validators\rules\NumberRule;
 
 /**
  * NumberValidator validates that the attribute value is a number.
@@ -22,6 +25,24 @@ use yii\helpers\StringHelper;
  */
 class NumberValidator extends Validator
 {
+    const RULES = [
+        'min'         => [
+            'message' => '{attribute} must be no less than {min}.',
+        ],
+        'max'         => [
+            'message' => '{attribute} must be no less than {max}.',
+        ],
+        'integerOnly' => [
+            'class'    => NumberRule::class,
+            'default'  => false,
+            'message'  => false,
+            'required' => true,
+        ],
+    ];
+
+    /** @var BaseRule[] $rules */
+    protected $rules;
+
     /**
      * @var bool whether the attribute value can only be an integer. Defaults to false.
      */
@@ -54,23 +75,70 @@ class NumberValidator extends Validator
      */
     public $numberPattern = '/^\s*[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?\s*$/';
 
+    public function __construct(array $config = [])
+    {
+        foreach (static::RULES as $rule => $defaults) {
+            if (isset($defaults['default']) && $defaults['default'] !== null) {
+                $this->rules[$rule] = (new BaseRule())->$rule($defaults['default'], $defaults['message']);
+            }
+        }
+
+        parent::__construct($config);
+    }
 
     /**
-     * {@inheritdoc}
+     * @param string $name
+     * @param array  $params
+     *
+     * @return mixed
+     * @throws InvalidConfigException
      */
-    public function init(): void
+    public function __call($name, $params)
     {
-        parent::init();
-        if ($this->message === null) {
-            $this->message = $this->integerOnly ? Yii::t('yii', '{attribute} must be an integer.')
-                : Yii::t('yii', '{attribute} must be a number.');
+        if (isset(static::RULES[$name])) {
+            return $this->setRule($name, $params[0], $params[1]);
         }
-        if ($this->min !== null && $this->tooSmall === null) {
-            $this->tooSmall = Yii::t('yii', '{attribute} must be no less than {min}.');
+
+        return parent::__call($name, $params);
+    }
+
+    /**
+     * @param string $name
+     * @param null   $value
+     * @param string $message
+     *
+     * @return static
+     *
+     * @throws InvalidConfigException
+     */
+    public function setRule(string $name, $value = null, $message = '')
+    {
+        $config = static::RULES[$name];
+        if (isset($config)) {
+            $required = isset($config['required']) && $config['required'] === true;
+
+            if ($value === null) {
+                if ($required) {
+                    throw new InvalidConfigException("'$name' rule is required and can't be deleted");
+                }
+
+                unset($this->rules[$name]);
+            }
+
+            if (empty($message)) {
+                $message = $config['message'];
+            }
+
+            $rule = new BaseRule();
+            $rule->value = $value;
+            $rule->message = Yii::t('yii', $message);
+
+            $this->rules[$name] = $rule;
+
+            return $this;
         }
-        if ($this->max !== null && $this->tooBig === null) {
-            $this->tooBig = Yii::t('yii', '{attribute} must be no greater than {max}.');
-        }
+
+        throw new InvalidConfigException("'$name' rule is not presents in " . static::class);
     }
 
     /**

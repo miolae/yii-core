@@ -448,8 +448,10 @@ class Model extends Component implements StaticInstanceInterface, IteratorAggreg
         foreach ($this->rules() as $rule) {
             if ($rule instanceof Validator) {
                 $validators->append($rule);
-            } elseif (is_array($rule) && isset($rule[0], $rule[1])) { // attributes, validator type
-                $validator = Validator::createValidator($rule[1], $this, (array) $rule[0], array_slice($rule, 2));
+            } elseif (is_array($rule) && isset($rule[0], $rule[1]) && $rule[1] instanceof Validator) {
+                /** @var Validator $validator */
+                $validator = $rule[1];
+                $validator->attributes = (array)$rule[0];
                 $validators->append($validator);
             } else {
                 throw new InvalidConfigException('Invalid validation rule: a rule must specify both attribute names and validator type.');
