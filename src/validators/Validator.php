@@ -9,9 +9,11 @@ namespace yii\validators;
 
 use yii\base\Component;
 use yii\di\AbstractContainer;
+use yii\exceptions\InvalidConfigException;
 use yii\exceptions\NotSupportedException;
 use yii\helpers\Yii;
 use yii\i18n\I18N;
+use yii\validators\rules\BaseRule;
 
 /**
  * Validator is the base class for all validators.
@@ -54,8 +56,10 @@ use yii\i18n\I18N;
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
  */
-class Validator extends Component
+abstract class Validator extends Component
 {
+    const RULES = [];
+
     /**
      * @var array list of built-in validators (name => class or configuration)
      */
@@ -189,14 +193,48 @@ class Validator extends Component
      * @see when
      */
     public $whenClient;
+    /** @var BaseRule[] $rules */
+    protected $rules;
 
 
+    /**
+     * Validator constructor.
+     *
+     * @param array $config
+     *
+     * @throws InvalidConfigException
+     */
     public function __construct(array $config = [])
     {
+        foreach (static::RULES as $rule => $defaults) {
+            if (isset($defaults['default']) && $defaults['default'] !== null) {
+                $this->setRule($rule, $defaults['default'], $defaults['message']);
+            }
+        }
+
         if (!empty($config)) {
             AbstractContainer::configure($this, $config);
         }
         $this->init();
+    }
+
+    /**
+     * @param string $name
+     * @param array  $params
+     *
+     * @return mixed
+     * @throws InvalidConfigException
+     */
+    public function __call($name, $params)
+    {
+        if (isset(static::RULES[$name])) {
+            if (!isset($params[1])) {
+                $params[1] = static::RULES[$name]['message'];
+            }
+            return $this->setRule($name, $params[0], $params[1]);
+        }
+
+        return parent::__call($name, $params);
     }
 
     public function init(): void
@@ -242,6 +280,45 @@ class Validator extends Component
         unset($params['__class']);
 
         return Yii::createObject($class, [$params]);
+    }
+
+    /**
+     * @param string $name
+     * @param null   $value
+     * @param string $message
+     *
+     * @return static
+     *
+     * @throws InvalidConfigException
+     */
+    public function setRule(string $name, $value = null, $message = '')
+    {
+        $config = static::RULES[$name];
+        if (isset($config)) {
+            $required = isset($config['required']) && $config['required'] === true;
+
+            if ($value === null) {
+                if ($required) {
+                    throw new InvalidConfigException("'$name' rule is required and can't be deleted");
+                }
+
+                unset($this->rules[$name]);
+            }
+
+            if (empty($message)) {
+                $message = $config['message'];
+            }
+
+            $rule = new BaseRule();
+            $rule->value = $value;
+            $rule->message = Yii::t('yii', $message);
+
+            $this->rules[$name] = $rule;
+
+            return $this;
+        }
+
+        throw new InvalidConfigException("'$name' rule is not presents in " . static::class);
     }
 
     /**

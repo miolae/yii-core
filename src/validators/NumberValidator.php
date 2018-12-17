@@ -7,10 +7,8 @@
 
 namespace yii\validators;
 
-use yii\exceptions\InvalidConfigException;
 use yii\helpers\StringHelper;
 use yii\helpers\Yii;
-use yii\validators\rules\BaseRule;
 use yii\validators\rules\NumberRule;
 
 /**
@@ -22,6 +20,10 @@ use yii\validators\rules\NumberRule;
  *
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
+ *
+ * @method NumberValidator min(float|null $value)
+ * @method NumberValidator max(float|null $value)
+ * @method NumberValidator integerOnly(bool $value)
  */
 class NumberValidator extends Validator
 {
@@ -39,9 +41,6 @@ class NumberValidator extends Validator
             'required' => true,
         ],
     ];
-
-    /** @var BaseRule[] $rules */
-    protected $rules;
 
     /**
      * @var bool whether the attribute value can only be an integer. Defaults to false.
@@ -74,72 +73,6 @@ class NumberValidator extends Validator
      * that matches floating numbers with optional exponential part (e.g. -1.23e-10).
      */
     public $numberPattern = '/^\s*[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?\s*$/';
-
-    public function __construct(array $config = [])
-    {
-        foreach (static::RULES as $rule => $defaults) {
-            if (isset($defaults['default']) && $defaults['default'] !== null) {
-                $this->rules[$rule] = (new BaseRule())->$rule($defaults['default'], $defaults['message']);
-            }
-        }
-
-        parent::__construct($config);
-    }
-
-    /**
-     * @param string $name
-     * @param array  $params
-     *
-     * @return mixed
-     * @throws InvalidConfigException
-     */
-    public function __call($name, $params)
-    {
-        if (isset(static::RULES[$name])) {
-            return $this->setRule($name, $params[0], $params[1]);
-        }
-
-        return parent::__call($name, $params);
-    }
-
-    /**
-     * @param string $name
-     * @param null   $value
-     * @param string $message
-     *
-     * @return static
-     *
-     * @throws InvalidConfigException
-     */
-    public function setRule(string $name, $value = null, $message = '')
-    {
-        $config = static::RULES[$name];
-        if (isset($config)) {
-            $required = isset($config['required']) && $config['required'] === true;
-
-            if ($value === null) {
-                if ($required) {
-                    throw new InvalidConfigException("'$name' rule is required and can't be deleted");
-                }
-
-                unset($this->rules[$name]);
-            }
-
-            if (empty($message)) {
-                $message = $config['message'];
-            }
-
-            $rule = new BaseRule();
-            $rule->value = $value;
-            $rule->message = Yii::t('yii', $message);
-
-            $this->rules[$name] = $rule;
-
-            return $this;
-        }
-
-        throw new InvalidConfigException("'$name' rule is not presents in " . static::class);
-    }
 
     /**
      * {@inheritdoc}
@@ -175,9 +108,13 @@ class NumberValidator extends Validator
         $pattern = $this->integerOnly ? $this->integerPattern : $this->numberPattern;
         if (!preg_match($pattern, StringHelper::normalizeNumber($value))) {
             return [$this->message, []];
-        } elseif ($this->min !== null && $value < $this->min) {
+        }
+
+        if ($this->min !== null && $value < $this->min) {
             return [$this->tooSmall, ['min' => $this->min]];
-        } elseif ($this->max !== null && $value > $this->max) {
+        }
+
+        if ($this->max !== null && $value > $this->max) {
             return [$this->tooBig, ['max' => $this->max]];
         }
 
