@@ -30,9 +30,11 @@ class NumberValidator extends Validator
     const RULES = [
         'min'         => [
             'message' => '{attribute} must be no less than {min}.',
+            'callable' => [self::class, 'checkMin'],
         ],
         'max'         => [
             'message' => '{attribute} must be no less than {max}.',
+            'callable' => [self::class, 'checkMax'],
         ],
         'integerOnly' => [
             'class'    => NumberRule::class,
@@ -74,60 +76,13 @@ class NumberValidator extends Validator
      */
     public $numberPattern = '/^\s*[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?\s*$/';
 
-    /**
-     * {@inheritdoc}
-     */
-    public function validateAttribute($model, $attribute)
+    public static function checkMin($minimum, $current)
     {
-        $value = $model->$attribute;
-        if ($this->isNotNumber($value)) {
-            $this->addError($model, $attribute, $this->message);
-            return;
-        }
-        $pattern = $this->integerOnly ? $this->integerPattern : $this->numberPattern;
-
-        if (!preg_match($pattern, StringHelper::normalizeNumber($value))) {
-            $this->addError($model, $attribute, $this->message);
-        }
-        if ($this->min !== null && $value < $this->min) {
-            $this->addError($model, $attribute, $this->tooSmall, ['min' => $this->min]);
-        }
-        if ($this->max !== null && $value > $this->max) {
-            $this->addError($model, $attribute, $this->tooBig, ['max' => $this->max]);
-        }
+        return $current >= $minimum;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function validateValue($value)
+    public static function checkMax($maximum, $current)
     {
-        if ($this->isNotNumber($value)) {
-            return [Yii::t('yii', '{attribute} is invalid.'), []];
-        }
-        $pattern = $this->integerOnly ? $this->integerPattern : $this->numberPattern;
-        if (!preg_match($pattern, StringHelper::normalizeNumber($value))) {
-            return [$this->message, []];
-        }
-
-        if ($this->min !== null && $value < $this->min) {
-            return [$this->tooSmall, ['min' => $this->min]];
-        }
-
-        if ($this->max !== null && $value > $this->max) {
-            return [$this->tooBig, ['max' => $this->max]];
-        }
-
-        return null;
-    }
-
-    /*
-     * @param mixed $value the data value to be checked.
-     */
-    private function isNotNumber($value)
-    {
-        return is_array($value)
-        || (is_object($value) && !method_exists($value, '__toString'))
-        || (!is_object($value) && !is_scalar($value) && $value !== null);
+        return $current <= $maximum;
     }
 }

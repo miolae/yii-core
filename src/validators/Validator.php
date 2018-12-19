@@ -10,7 +10,6 @@ namespace yii\validators;
 use yii\base\Component;
 use yii\di\AbstractContainer;
 use yii\exceptions\InvalidConfigException;
-use yii\exceptions\NotSupportedException;
 use yii\helpers\Yii;
 use yii\i18n\I18N;
 use yii\validators\rules\BaseRule;
@@ -208,7 +207,8 @@ abstract class Validator extends Component
     {
         foreach (static::RULES as $rule => $defaults) {
             if (isset($defaults['default']) && $defaults['default'] !== null) {
-                $this->setRule($rule, $defaults['default'], $defaults['message']);
+                $validation = $defaults['callable'] ?? $defaults['regex'];
+                $this->setRule($rule, $defaults['default'], $defaults['message'], $validation);
             }
         }
 
@@ -228,10 +228,13 @@ abstract class Validator extends Component
     public function __call($name, $params)
     {
         if (isset(static::RULES[$name])) {
+            $defaults = static::RULES[$name];
+
             if (!isset($params[1])) {
-                $params[1] = static::RULES[$name]['message'];
+                $params[1] = $defaults['message'];
             }
-            return $this->setRule($name, $params[0], $params[1]);
+
+            return $this->setRule($name, $params[0], $params[1], $defaults['callable'] ?? $defaults['regex']);
         }
 
         return parent::__call($name, $params);
@@ -283,15 +286,16 @@ abstract class Validator extends Component
     }
 
     /**
-     * @param string $name
-     * @param null   $value
-     * @param string $message
+     * @param string          $name
+     * @param mixed|null      $value
+     * @param string          $message
+     * @param callable|string $validation
      *
      * @return static
      *
      * @throws InvalidConfigException
      */
-    public function setRule(string $name, $value = null, $message = '')
+    public function setRule(string $name, $value, ?string $message, $validation)
     {
         $config = static::RULES[$name];
         if (isset($config)) {
@@ -305,6 +309,7 @@ abstract class Validator extends Component
                 unset($this->rules[$name]);
             }
 
+            /** @noinspection IsEmptyFunctionUsageInspection */
             if (empty($message)) {
                 $message = $config['message'];
             }
@@ -313,12 +318,20 @@ abstract class Validator extends Component
             $rule->value = $value;
             $rule->message = Yii::t('yii', $message);
 
+            if (is_callable($validation)) {
+                $rule->validationMethod = $validation;
+            }
+
+            if (is_string($validation)) {
+                $rule->regex = $validation;
+            }
+
             $this->rules[$name] = $rule;
 
             return $this;
         }
 
-        throw new InvalidConfigException("'$name' rule is not presents in " . static::class);
+        throw new InvalidConfigException("'$name' rule is not presented in " . static::class);
     }
 
     /**
@@ -357,8 +370,11 @@ abstract class Validator extends Component
     /**
      * Validates a single attribute.
      * Child classes must implement this method to provide the actual validation logic.
-     * @param \yii\base\Model $model the data model to be validated
-     * @param string $attribute the name of the attribute to be validated.
+     *
+     * @param \yii\base\Model $model     the data model to be validated
+     * @param string          $attribute the name of the attribute to be validated.
+     *
+     * @throws InvalidConfigException
      */
     public function validateAttribute($model, $attribute)
     {
@@ -399,7 +415,9 @@ abstract class Validator extends Component
     /**
      * Validates a value.
      * A validator class can implement this method to support data validation out of the context of a data model.
+     *
      * @param mixed $value the data value to be validated.
+     *
      * @return array|null the error message and the array of parameters to be inserted into the error message.
      * ```php
      * if (!$valid) {
@@ -416,11 +434,17 @@ abstract class Validator extends Component
      * for this example `message` template can contain `{param1}`, `{formattedLimit}`, `{mimeTypes}`, `{param4}`
      *
      * Null should be returned if the data is valid.
-     * @throws NotSupportedException if the validator does not supporting data validation without a model
+     * @throws InvalidConfigException
      */
-    protected function validateValue($value)
+    protected function validateValue($value): bool
     {
-        throw new NotSupportedException(get_class($this) . ' does not support validateValue().');
+        foreach ($this->rules as $rule) {
+            if (!$rule->validate($value)) {
+                return [$rule->message, []]; //TODO Вторым пунктом в массиве какие-то параметры могут идти...
+            }
+        }
+
+        return true;
     }
 
     /**

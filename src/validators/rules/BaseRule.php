@@ -5,6 +5,14 @@ namespace yii\validators\rules;
 use yii\base\BaseObject;
 use yii\exceptions\InvalidConfigException;
 
+/**
+ * Class BaseRule
+ *
+ * @package yii\validators\rules
+ *
+ * @property-write callable $validationMethod
+ * @property-write string   $regex
+ */
 class BaseRule extends BaseObject
 {
     public $value;
@@ -35,6 +43,11 @@ class BaseRule extends BaseObject
     public function setValidationMethod(Callable $method)
     {
         $this->validationMethod = $method;
+    }
+
+    public function setRegex(string $regex)
+    {
+        $this->regex = $regex;
     }
 
     protected function validateRegex($value): bool
