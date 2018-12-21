@@ -74,7 +74,7 @@ class GettextMessageSource extends MessageSource
      * @see loadFallbackMessages
      * @see sourceLanguage
      */
-    public function loadMessages($category, $language): array
+    protected function loadMessages($category, $language): array
     {
         $messageFile = $this->getMessageFilePath($language);
         $messages = $this->loadMessagesFromFile($messageFile, $category);
