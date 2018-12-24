@@ -47,6 +47,15 @@ abstract class MessageSource extends Component
      */
     abstract protected function loadMessages($category, $language): array;
 
+    /**
+     * Returns all messages for a given category in a given language.
+     * Returned value is a result of {@see loadMessages()}
+     *
+     * @param string $category
+     * @param string $language
+     *
+     * @return array
+     */
     public function getMessages($category, $language)
     {
         $key = $language . '/' . $category;
