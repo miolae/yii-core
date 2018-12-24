@@ -314,7 +314,9 @@ abstract class Validator extends Component
                 $message = $config['message'];
             }
 
-            $rule = new BaseRule();
+            $class = $config['class'] ?? BaseRule::class;
+
+            $rule = new $class();
             $rule->value = $value;
             $rule->message = Yii::t('yii', $message);
 
