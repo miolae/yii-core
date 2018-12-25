@@ -89,6 +89,6 @@ class BaseRule extends BaseObject
 
     protected function validateRegex($value): bool
     {
-        return preg_match($this->regex, $value);
+        return (bool)preg_match($this->regex, $value);
     }
 }

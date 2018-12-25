@@ -7,10 +7,9 @@
 
 namespace yii\tests\framework\validators;
 
-use yii\validators\NumberValidator;
-use yii\web\View;
 use yii\tests\data\validators\models\FakedValidationModel;
 use yii\tests\TestCase;
+use yii\validators\NumberValidator;
 
 /**
  * @group validators
@@ -20,6 +19,238 @@ class NumberValidatorTest extends TestCase
     private $commaDecimalLocales = ['fr_FR.UTF-8', 'fr_FR.UTF8', 'fr_FR.utf-8', 'fr_FR.utf8', 'French_France.1252'];
     private $pointDecimalLocales = ['en_US.UTF-8', 'en_US.UTF8', 'en_US.utf-8', 'en_US.utf8', 'English_United States.1252'];
     private $oldLocale;
+
+    public function firstDataProvider()
+    {
+        $min = 'min';
+        $max = 'max';
+        $int = 'integerOnly';
+
+        $dataSet = [
+            [
+                'value'       => null,
+                'validations' => [
+                    'base' => false,
+                    $min   => false,
+                    $max   => false,
+                    $int   => false,
+                ],
+            ],
+            [
+                'value'       => 'test',
+                'validations' => [
+                    'base' => false,
+                    $min   => false,
+                    $max   => false,
+                    $int   => false,
+                ],
+            ],
+            [
+                'value'       => 0,
+                'validations' => [
+                    'base' => true,
+                    $min   => true,
+                    $max   => true,
+                    $int   => true,
+                ],
+            ],
+            [
+                'value'       => -10,
+                'validations' => [
+                    'base' => true,
+                    $min   => true,
+                    $max   => true,
+                    $int   => true,
+                ],
+            ],
+            [
+                'value'       => 15.45,
+                'validations' => [
+                    'base' => true,
+                    $min   => true,
+                    $max   => true,
+                    $int   => false,
+                ],
+            ],
+            [
+                'value'       => '15.45',
+                'validations' => [
+                    'base' => true,
+                    $min   => true,
+                    $max   => true,
+                    $int   => false,
+                ],
+            ],
+            [
+                'value'       => '15,45',
+                'validations' => [
+                    'base' => false, //due to locality
+                    $min   => true,
+                    $max   => true,
+                    $int   => false,
+                ],
+            ],
+            [
+                'value'       => '12:45',
+                'validations' => [
+                    'base' => false,
+                    $min   => false,
+                    $max   => false,
+                    $int   => false,
+                ],
+            ],
+            [
+                'value'       => '020',
+                'validations' => [
+                    'base' => true,
+                    $min   => true,
+                    $max   => true,
+                    $int   => true,
+                ],
+            ],
+            [
+                'value'       => 0x14,
+                'validations' => [
+                    'base' => true,
+                    $min   => true,
+                    $max   => false,
+                    $int   => true,
+                ],
+            ],
+            [
+                'value'       => '0x14',
+                'validations' => [
+                    'base' => false,
+                    $min   => true,
+                    $max   => true,
+                    $int   => true,
+                ],
+            ],
+            [
+                'value'       => -9.99,
+                'validations' => [
+                    'base' => true,
+                    $min   => true,
+                    $max   => true,
+                    $int   => false,
+                ],
+            ],
+            [
+                'value'       => -10.01,
+                'validations' => [
+                    'base' => true,
+                    $min   => false,
+                    $max   => true,
+                    $int   => false,
+                ],
+            ],
+            [
+                'value'       => -11,
+                'validations' => [
+                    'base' => true,
+                    $min   => false,
+                    $max   => true,
+                    $int   => true,
+                ],
+            ],
+            [
+                'value'       => 19,
+                'validations' => [
+                    'base' => true,
+                    $min   => true,
+                    $max   => true,
+                    $int   => true,
+                ],
+            ],
+            [
+                'value'       => 20,
+                'validations' => [
+                    'base' => true,
+                    $min   => true,
+                    $max   => true,
+                    $int   => true,
+                ],
+            ],
+            [
+                'value'       => 21,
+                'validations' => [
+                    'base' => true,
+                    $min   => true,
+                    $max   => false,
+                    $int   => true,
+                ],
+            ],
+            [
+                'value'       => 19.99,
+                'validations' => [
+                    'base' => true,
+                    $min   => true,
+                    $max   => true,
+                    $int   => false,
+                ],
+            ],
+            [
+                'value'       => 20.01,
+                'validations' => [
+                    'base' => true,
+                    $min   => true,
+                    $max   => false,
+                    $int   => false,
+                ],
+            ],
+        ];
+
+        $rules = [
+            bindec(001) => [
+                'title' => $min,
+                'value' => -10,
+            ],
+            bindec(010) => [
+                'title' => $max,
+                'value' => 20,
+            ],
+            bindec(100) => [
+                'title' => $int,
+                'value' => true,
+            ],
+        ];
+
+        $result = [];
+        foreach ($dataSet as $data) {
+            $iterator = 2 ** count($rules) - 1;
+
+            do {
+                $dataResult = ['rules' => [], 'value' => $data['value'], 'result' => $data['validations']['base']];
+                $resultKey = [(string)$data['value']];
+                foreach ($rules as $key => $rule) {
+                    if ($key & $iterator) {
+                        $resultKey[] = $rule['title'];
+                        $dataResult['rules'][$rule['title']] = $rule['value'];
+                        $dataResult['result'] = ($dataResult['result'] && $data['validations'][$rule['title']]);
+                    }
+                }
+
+                $resultKey = implode(', ', $resultKey);
+                $result[$resultKey] = $dataResult;
+                $iterator -= 1;
+            } while ($iterator > 0);
+        }
+
+        return $result;
+    }
+
+    /** @dataProvider firstDataProvider */
+    public function testSimpleData($rules, $value, $result) {
+        /** @noinspection PhpUnhandledExceptionInspection */
+        $validator = new NumberValidator();
+        foreach ($rules as $title => $rule) {
+            $validator->$title($rule);
+        }
+
+        $error = '';
+        $resultActual = $validator->validate($value, $error);
+        $this->assertEquals($result, $resultActual, $error);
+    }
 
     private function setCommaDecimalLocale()
     {
@@ -60,10 +291,13 @@ class NumberValidatorTest extends TestCase
 
     public function testEnsureMessageOnInit()
     {
+        /** @noinspection PhpUnhandledExceptionInspection */
         $val = new NumberValidator();
         $this->assertInternalType('string', $val->message);
         $this->assertTrue($val->max === null);
-        $val = new NumberValidator(['min' => -1, 'max' => 20, 'integerOnly' => true]);
+
+        /** @noinspection PhpUnhandledExceptionInspection */
+        $val = (new NumberValidator())->min(-1)->max(20)->integerOnly(true);
         $this->assertInternalType('string', $val->message);
         $this->assertInternalType('string', $val->tooSmall);
         $this->assertInternalType('string', $val->tooBig);
@@ -71,6 +305,7 @@ class NumberValidatorTest extends TestCase
 
     public function testValidateValueSimple()
     {
+        /** @noinspection PhpUnhandledExceptionInspection */
         $val = new NumberValidator();
         $this->assertTrue($val->validate(20));
         $this->assertTrue($val->validate(0));
@@ -85,7 +320,9 @@ class NumberValidatorTest extends TestCase
         $this->restoreLocale();
 
         $this->assertFalse($val->validate('12:45'));
-        $val = new NumberValidator(['integerOnly' => true]);
+
+        /** @noinspection PhpUnhandledExceptionInspection */
+        $val = (new NumberValidator)->integerOnly(true);
         $this->assertTrue($val->validate(20));
         $this->assertTrue($val->validate(0));
         $this->assertFalse($val->validate(25.45));
@@ -96,8 +333,10 @@ class NumberValidatorTest extends TestCase
         $this->assertFalse($val->validate('0x14')); // todo check this
     }
 
+    // Это я оставлю отдельно пока. Но тоже надо бы перенести.
     public function testValidateValueAdvanced()
     {
+        /** @noinspection PhpUnhandledExceptionInspection */
         $val = new NumberValidator();
         $this->assertTrue($val->validate('-1.23')); // signed float
         $this->assertTrue($val->validate('-4.423e-12')); // signed float + exponent
@@ -106,7 +345,9 @@ class NumberValidatorTest extends TestCase
         $this->assertFalse($val->validate('-e3'));
         $this->assertFalse($val->validate('-4.534-e-12')); // 'signed' exponent
         $this->assertFalse($val->validate('12.23^4')); // expression instead of value
-        $val = new NumberValidator(['integerOnly' => true]);
+
+        /** @noinspection PhpUnhandledExceptionInspection */
+        $val = (new NumberValidator)->integerOnly(true);
         $this->assertFalse($val->validate('-1.23'));
         $this->assertFalse($val->validate('-4.423e-12'));
         $this->assertFalse($val->validate('12E3'));
@@ -118,6 +359,7 @@ class NumberValidatorTest extends TestCase
 
     public function testValidateValueWithLocaleWhereDecimalPointIsComma()
     {
+        /** @noinspection PhpUnhandledExceptionInspection */
         $val = new NumberValidator();
 
         $this->setPointDecimalLocale();
@@ -131,13 +373,16 @@ class NumberValidatorTest extends TestCase
 
     public function testValidateValueMin()
     {
-        $val = new NumberValidator(['min' => 1]);
+        /** @noinspection PhpUnhandledExceptionInspection */
+        $val = (new NumberValidator)->min(1);
         $this->assertTrue($val->validate(1));
         $this->assertFalse($val->validate(-1, $error));
         $this->assertContains('the input value must be no less than 1.', $error);
         $this->assertFalse($val->validate('22e-12'));
         $this->assertTrue($val->validate(PHP_INT_MAX + 1));
-        $val = new NumberValidator(['min' => 1], ['integerOnly' => true]);
+
+        /** @noinspection PhpUnhandledExceptionInspection */
+        $val = (new NumberValidator)->min(1)->integerOnly(true);
         $this->assertTrue($val->validate(1));
         $this->assertFalse($val->validate(-1));
         $this->assertFalse($val->validate('22e-12'));
@@ -146,12 +391,15 @@ class NumberValidatorTest extends TestCase
 
     public function testValidateValueMax()
     {
-        $val = new NumberValidator(['max' => 1.25]);
+        /** @noinspection PhpUnhandledExceptionInspection */
+        $val = (new NumberValidator)->max(1.25);
         $this->assertTrue($val->validate(1));
         $this->assertFalse($val->validate(1.5));
         $this->assertTrue($val->validate('22e-12'));
         $this->assertTrue($val->validate('125e-2'));
-        $val = new NumberValidator(['max' => 1.25, 'integerOnly' => true]);
+
+        /** @noinspection PhpUnhandledExceptionInspection */
+        $val = (new NumberValidator)->max(1.25)->integerOnly(true);
         $this->assertTrue($val->validate(1));
         $this->assertFalse($val->validate(1.5));
         $this->assertFalse($val->validate('22e-12'));
@@ -160,13 +408,20 @@ class NumberValidatorTest extends TestCase
 
     public function testValidateValueRange()
     {
-        $val = new NumberValidator(['min' => -10, 'max' => 20]);
+        /** @noinspection PhpUnhandledExceptionInspection */
+        $val = (new NumberValidator)->min(-10)->max(20);
         $this->assertTrue($val->validate(0));
         $this->assertTrue($val->validate(-10));
+        $this->assertTrue($val->validate(-9.99));
+        $this->assertFalse($val->validate(-10.01));
         $this->assertFalse($val->validate(-11));
         $this->assertFalse($val->validate(21));
-        $val = new NumberValidator(['min' => -10, 'max' => 20, 'integerOnly' => true]);
+
+        /** @noinspection PhpUnhandledExceptionInspection */
+        $val = (new NumberValidator)->min(-10)->max(20)->integerOnly(true);
         $this->assertTrue($val->validate(0));
+        $this->assertFalse($val->validate(-9.99));
+        $this->assertFalse($val->validate(-10.01));
         $this->assertFalse($val->validate(-11));
         $this->assertFalse($val->validate(22));
         $this->assertFalse($val->validate('20e-1'));

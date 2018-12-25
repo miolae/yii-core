@@ -15,10 +15,10 @@ class NumberRule extends BaseRule
             return false;
         }
 
-        $regex = $value ? $this->regexInt : $this->regex;
+        $regex = $this->value ? $this->regexInt : $this->regex;
         $value = StringHelper::normalizeNumber($value);
 
-        return preg_match($regex, $value);
+        return (bool)preg_match($regex, $value);
     }
 
     public function setMessage($message)
