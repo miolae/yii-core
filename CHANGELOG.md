@@ -58,4 +58,23 @@ Yii Framework Change Log
 - Chg #16247: Cloning components will now clone their behaviors as well (brandonkelly)
 - Enh #16487: Added circular reference detection in DI container (hiqsol)
 - Enh #16495: Added method call support in DI and `Yii::configure()` (hiqsol)
-
+- Enh #96: Changing validation logic (miolae)
+  - You can add a validator now like this: 
+    ```php
+    public function rules() {
+      return [
+        [['login', 'pass'], (new NumberValidator())->min(6)->integerOnly(true)],
+        ['email', new RequiredValidator],
+      ];
+    }
+    ```
+  - Validators don't contain validation logic anymore. They are containers for _validation rules_ (see `BaseRule` class).
+  - So, value validation is performed by _Rules_ now
+  - Also Rules contain error messages and format them. You can get source message within `message` rule property and a formatted one with `getMessageFormatted()` method
+  - `BaseRule` class is suitable for most of validators because it can validate given value within 2 ways:
+    - either with a given callback
+    - or with a given regular expression
+  - In all other cases you just need to extend `BaseRule` and change or add the needed bit of logic
+  - Validation rules themselves are described in the `RULES` constant of your validator
+  - `yii\validators\Validator::validateValue()` always return boolean value since now 
+  - `yii\validators\Validator::addError()` requires 3 parameters instead of 4 (since message moved to validation rules)
