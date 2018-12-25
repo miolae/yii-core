@@ -4,6 +4,8 @@ namespace yii\validators\rules;
 
 use yii\base\BaseObject;
 use yii\exceptions\InvalidConfigException;
+use yii\helpers\Yii;
+use yii\i18n\I18N;
 
 /**
  * Class BaseRule
@@ -48,6 +50,41 @@ class BaseRule extends BaseObject
     public function setRegex(string $regex)
     {
         $this->regex = $regex;
+    }
+
+    public function messageFormat(array $params): string
+    {
+        if (isset($params['value'])) {
+            $params['value'] = $this->getMessageValue($params['value']);
+        }
+        $params['test'] = (string)$this->value;
+
+        /** @noinspection PhpUnhandledExceptionInspection */
+        $i18n = Yii::get('i18n', null, false);
+        if (isset($i18n)) {
+            return $i18n->format($this->message, $params);
+        }
+
+        // FIXME This call is moved from abstract Validator "as is". Needs to be fixed.
+        return I18N::substitute($this->message, $params);
+    }
+
+    /**
+     * @param       $value
+     *
+     * @return mixed
+     */
+    protected function getMessageValue($value)
+    {
+        if (is_array($value)) {
+            $result = 'array()';
+        } elseif (is_object($value)) {
+            $result = 'object';
+        } else {
+            $result = $value;
+        }
+
+        return $result;
     }
 
     protected function validateRegex($value): bool

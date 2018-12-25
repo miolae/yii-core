@@ -8,6 +8,7 @@
 namespace yii\validators;
 
 use yii\base\Component;
+use yii\base\Model;
 use yii\di\AbstractContainer;
 use yii\exceptions\InvalidConfigException;
 use yii\helpers\Yii;
@@ -194,6 +195,8 @@ abstract class Validator extends Component
     public $whenClient;
     /** @var BaseRule[] $rules */
     protected $rules;
+    /** @var BaseRule $rules */
+    protected $ruleFailed;
 
 
     /**
@@ -207,7 +210,7 @@ abstract class Validator extends Component
     {
         foreach (static::RULES as $rule => $defaults) {
             if (isset($defaults['default']) && $defaults['default'] !== null) {
-                $validation = $defaults['callable'] ?? $defaults['regex'];
+                $validation = $defaults['callable'] ?? $defaults['regex'] ?? null;
                 $this->setRule($rule, $defaults['default'], $defaults['message'], $validation);
             }
         }
@@ -234,7 +237,8 @@ abstract class Validator extends Component
                 $params[1] = $defaults['message'];
             }
 
-            return $this->setRule($name, $params[0], $params[1], $defaults['callable'] ?? $defaults['regex']);
+            $validation = $defaults['callable'] ?? $defaults['regex'] ?? null;
+            return $this->setRule($name, $params[0], $params[1], $validation);
         }
 
         return parent::__call($name, $params);
@@ -295,7 +299,7 @@ abstract class Validator extends Component
      *
      * @throws InvalidConfigException
      */
-    public function setRule(string $name, $value, ?string $message, $validation)
+    public function setRule(string $name, $value, ?string $message = null, $validation = null)
     {
         if ($this->ruleEsixts($name)) {
             if ($value === null) {
@@ -354,14 +358,13 @@ abstract class Validator extends Component
      *
      * @param \yii\base\Model $model     the data model to be validated
      * @param string          $attribute the name of the attribute to be validated.
-     *
-     * @throws InvalidConfigException
      */
-    public function validateAttribute($model, $attribute)
+    public function validateAttribute($model, $attribute): void
     {
         $result = $this->validateValue($model->$attribute);
-        if (!empty($result)) {
-            $this->addError($model, $attribute, $result[0], $result[1]);
+
+        if (!$result) {
+            $this->addError($model, $attribute);
         }
     }
 
@@ -372,23 +375,18 @@ abstract class Validator extends Component
      * @param string $error the error message to be returned, if the validation fails.
      * @return bool whether the data is valid.
      */
-    public function validate($value, &$error = null)
+    public function validate($value, &$error = null): bool
     {
         $result = $this->validateValue($value);
-        if (empty($result)) {
+        if ($result === true) {
             return true;
         }
 
-        [$message, $params] = $result;
-        $params['attribute'] = Yii::t('yii', 'the input value');
-        if (is_array($value)) {
-            $params['value'] = 'array()';
-        } elseif (is_object($value)) {
-            $params['value'] = 'object';
-        } else {
-            $params['value'] = $value;
-        }
-        $error = $this->formatMessage($message, $params);
+        $params = [
+            'attribute' => Yii::t('yii', 'the input value'),
+            'value'     => $value,
+        ];
+        $error = $this->ruleFailed->messageFormat($params);
 
         return false;
     }
@@ -415,13 +413,15 @@ abstract class Validator extends Component
      * for this example `message` template can contain `{param1}`, `{formattedLimit}`, `{mimeTypes}`, `{param4}`
      *
      * Null should be returned if the data is valid.
-     * @throws InvalidConfigException
      */
     protected function validateValue($value): bool
     {
         foreach ($this->rules as $rule) {
+            /** @noinspection PhpUnhandledExceptionInspection */
             if (!$rule->validate($value)) {
-                return [$rule->message, []]; //TODO Вторым пунктом в массиве какие-то параметры могут идти...
+                $this->ruleFailed = $rule;
+
+                return false;
             }
         }
 
@@ -488,20 +488,14 @@ abstract class Validator extends Component
      * @param string $message the error message
      * @param array $params values for the placeholders in the error message
      */
-    public function addError($model, $attribute, $message, $params = [])
+    public function addError(Model $model, string $attribute, $params = [])
     {
         $params['attribute'] = $model->getAttributeLabel($attribute);
         if (!isset($params['value'])) {
-            $value = $model->$attribute;
-            if (is_array($value)) {
-                $params['value'] = 'array()';
-            } elseif (is_object($value) && !method_exists($value, '__toString')) {
-                $params['value'] = '(object)';
-            } else {
-                $params['value'] = $value;
-            }
+            $params['value'] = $model->$attribute;
         }
-        $model->addError($attribute, $this->formatMessage($message, $params));
+
+        $model->addError($attribute, $this->ruleFailed->messageFormat($params));
     }
 
     /**
