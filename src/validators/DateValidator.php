@@ -263,7 +263,7 @@ class DateValidator extends Validator
     /**
      * {@inheritdoc}
      */
-    public function validateAttribute($model, $attribute)
+    public function validateAttribute($model, $attribute): void
     {
         $value = $model->$attribute;
         if ($this->isEmpty($value)) {
@@ -303,7 +303,7 @@ class DateValidator extends Validator
     /**
      * {@inheritdoc}
      */
-    protected function validateValue($value)
+    protected function validateValue($value): bool
     {
         $timestamp = $this->parseDateValue($value);
         if ($timestamp === false) {
