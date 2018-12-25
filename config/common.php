@@ -29,6 +29,7 @@ return [
     'app' => [
         'id' => $params['app.id'],
         'name' => $params['app.name'],
+        'bootstrap' => [],
         'params' => $params,
     ],
 
@@ -71,6 +72,7 @@ return [
     'security' => [
         '__class' => yii\base\Security::class,
     ],
+    \yii\rbac\CheckAccessInterface::class => \yii\di\Reference::to('authManager'),
 
     yii\i18n\Locale::class => Reference::to('locale'),
     'locale' => [
