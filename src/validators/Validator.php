@@ -297,37 +297,15 @@ abstract class Validator extends Component
      */
     public function setRule(string $name, $value, ?string $message, $validation)
     {
-        $config = static::RULES[$name];
-        if (isset($config)) {
-            $required = isset($config['required']) && $config['required'] === true;
-
+        if ($this->ruleEsixts($name)) {
             if ($value === null) {
-                if ($required) {
-                    throw new InvalidConfigException("'$name' rule is required and can't be deleted");
-                }
+                $this->deleteRule($name);
 
-                unset($this->rules[$name]);
+                return $this;
             }
 
-            /** @noinspection IsEmptyFunctionUsageInspection */
-            if (empty($message)) {
-                $message = $config['message'];
-            }
-
-            $class = $config['class'] ?? BaseRule::class;
-
-            $rule = new $class();
-            $rule->value = $value;
-            $rule->message = Yii::t('yii', $message);
-
-            if (is_callable($validation)) {
-                $rule->validationMethod = $validation;
-            }
-
-            if (is_string($validation)) {
-                $rule->regex = $validation;
-            }
-
+            $rule = $this->createRule($name, $value, $message);
+            $this->addRuleValidation($rule, $validation);
             $this->rules[$name] = $rule;
 
             return $this;
@@ -568,5 +546,49 @@ abstract class Validator extends Component
         return array_map(function ($attribute) {
             return ltrim($attribute, '!');
         }, $this->attributes);
+    }
+
+    private function ruleEsixts(string $name)
+    {
+        return isset(static::RULES[$name]);
+    }
+
+    /**
+     * @param string $name
+     *
+     * @throws InvalidConfigException
+     */
+    private function deleteRule(string $name)
+    {
+        $config = static::RULES[$name];
+        $required = isset($config['required']) && $config['required'] === true;
+
+        if ($required) {
+            throw new InvalidConfigException("'$name' rule is required and can't be deleted");
+        }
+
+        unset($this->rules[$name]);
+    }
+
+    protected function createRule(string $name, $value, ?string $message): BaseRule
+    {
+        $class = static::RULES[$name]['class'] ?? BaseRule::class;
+
+        $rule = new $class();
+        $rule->value = $value;
+        $rule->message = Yii::t('yii', $message);
+
+        return $rule;
+    }
+
+    protected function addRuleValidation(BaseRule $rule, $validation)
+    {
+        if (is_callable($validation)) {
+            $rule->validationMethod = $validation;
+        }
+
+        if (is_string($validation)) {
+            $rule->regex = $validation;
+        }
     }
 }
